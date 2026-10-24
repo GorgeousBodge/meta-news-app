@@ -12,8 +12,17 @@
    are hit at most a few times an hour however often the glasses ask.
    ========================================================================== */
 
+/* --------------------------------------------------------------------------
+   SECTIONS — the only place you need to edit to add, remove or reorder topics.
+     key (e.g. gaming): short id, lowercase letters only
+     tab:   text on the tab (keep it short, about 8 characters max)
+     label: title shown at the top of the screen and used in the briefing
+     feeds: [source name, RSS feed address] — one or more
+   Tabs appear in the order listed here.
+   -------------------------------------------------------------------------- */
 const SECTIONS = {
   top: {
+    tab: 'Top',
     label: 'Top stories',
     feeds: [
       ['BBC', 'https://feeds.bbci.co.uk/news/rss.xml'],
@@ -21,6 +30,7 @@ const SECTIONS = {
     ],
   },
   uk: {
+    tab: 'UK',
     label: 'UK',
     feeds: [
       ['BBC', 'https://feeds.bbci.co.uk/news/uk/rss.xml'],
@@ -28,6 +38,7 @@ const SECTIONS = {
     ],
   },
   local: {
+    tab: 'Surrey',
     label: 'Surrey',
     feeds: [
       ['BBC Surrey', 'https://feeds.bbci.co.uk/news/england/surrey/rss.xml'],
@@ -35,6 +46,7 @@ const SECTIONS = {
     ],
   },
   world: {
+    tab: 'World',
     label: 'World',
     feeds: [
       ['BBC', 'https://feeds.bbci.co.uk/news/world/rss.xml'],
@@ -42,13 +54,27 @@ const SECTIONS = {
     ],
   },
   tech: {
-    label: 'Tech',
+    tab: 'Tech',
+    label: 'Technology',
     feeds: [
       ['BBC', 'https://feeds.bbci.co.uk/news/technology/rss.xml'],
       ['Guardian', 'https://www.theguardian.com/uk/technology/rss'],
+      ['The Verge', 'https://www.theverge.com/rss/index.xml'],
+    ],
+  },
+  gaming: {
+    tab: 'Gaming',
+    label: 'Gaming',
+    feeds: [
+      ['Guardian Games', 'https://www.theguardian.com/games/rss'],
+      ['Eurogamer', 'https://www.eurogamer.net/feed'],
+      ['VGC', 'https://www.videogameschronicle.com/feed/'],
+      ['Rock Paper Shotgun', 'https://www.rockpapershotgun.com/feed'],
     ],
   },
 };
+
+const SECTION_LIST = Object.entries(SECTIONS).map(([key, s]) => ({ key, label: s.tab || s.label }));
 
 const MAX_STORIES = 8;
 const FEED_TIMEOUT_MS = 6000;
@@ -212,7 +238,7 @@ async function handler(req, res) {
   const section = SECTIONS[key];
   if (!section) {
     res.setHeader('Cache-Control', 'no-store');
-    return res.status(404).json({ error: 'Unknown section' });
+    return res.status(404).json({ error: 'Unknown section', sections: SECTION_LIST });
   }
 
   const results = await Promise.allSettled(section.feeds.map(fetchFeed));
@@ -242,6 +268,7 @@ async function handler(req, res) {
   return res.status(200).json({
     section: key,
     label: section.label,
+    sections: SECTION_LIST,
     updated: new Date().toISOString(),
     ai: !!ai,
     failed,
