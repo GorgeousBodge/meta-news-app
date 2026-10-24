@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=600, height=600, initial-scale=1, user-scalable=no">
+  <meta name="description" content="Glanceable UK news summaries for Meta Ray-Ban Display">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <title>News Deck</title>
+  <!-- MRBD app icon must be a PNG (>= 52x52) or a Unicode symbol; SVG isn't supported -->
+  <link rel="icon" href="icon-96.png" sizes="96x96" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-speak" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+  </svg>
+
+  <div class="frame">
+    <header class="hud">
+      <button class="hud-back focusable" id="backBtn" type="button" aria-label="Back to headlines" hidden>
+        <svg class="ico" aria-hidden="true"><use href="#i-left"/></svg>
+      </button>
+      <div class="hud-heading">
+        <h1 class="hud-title" id="viewTitle">News</h1>
+        <span class="hud-sub" id="viewSub"></span>
+      </div>
+      <div class="hud-status">
+        <span class="status-dot" id="statusDot" aria-hidden="true"></span>
+        <span id="statusText">Loading</span>
+        <time class="hud-clock" id="clock">--:--</time>
+      </div>
+    </header>
+
+    <main class="stage">
+      <section class="view view-list" id="view-list" aria-label="Headlines">
+        <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+        <div class="list" id="list"></div>
+      </section>
+
+      <article class="view view-story" id="view-story" aria-label="Story" hidden>
+        <p class="story-meta" id="storyMeta"></p>
+        <h2 class="story-title" id="storyTitle"></h2>
+        <p class="story-summary" id="storySummary"></p>
+        <div class="story-keys">
+          <button type="button" class="key focusable" id="prevBtn" aria-label="Previous story">
+            <svg class="ico" aria-hidden="true"><use href="#i-left"/></svg><span class="key-label">Prev</span>
+          </button>
+          <button type="button" class="key focusable key-speak" id="speakBtn">
+            <svg class="ico" aria-hidden="true"><use href="#i-speak"/></svg><span class="key-label">Listen</span>
+          </button>
+          <button type="button" class="key focusable" id="nextBtn" aria-label="Next story">
+            <span class="key-label">Next</span><svg class="ico" aria-hidden="true"><use href="#i-right"/></svg>
+          </button>
+        </div>
+      </article>
+    </main>
+
+    <footer class="hints" aria-hidden="true">
+      <span><b>Swipe</b> Move</span>
+      <span><b>Pinch</b> Open</span>
+      <span><b>Back</b> Return</span>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
