@@ -135,6 +135,28 @@ async function summarise(stories, label) {
   if (!key || !stories.length) return null;
 
   const input = stories.map((s, i) => ({ n: i + 1, source: s.source, headline: s.title, standfirst: s.desc }));
+
+  // A forced tool call makes the model return structured data rather than free text.
+  const TOOL = {
+    name: 'deliver_news',
+    description: 'Deliver the story summaries and the spoken briefing.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        summaries: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'One summary per story, in the same order as given: 1 or 2 sentences, at most 35 words, adding what the headline does not already say.',
+        },
+        briefing: {
+          type: 'string',
+          description: 'A spoken briefing of the 4 or 5 most important stories, at most 90 words, written to be read aloud by text-to-speech (no lists, symbols or abbreviations that read badly).',
+        },
+      },
+      required: ['summaries', 'briefing'],
+    },
+  };
+
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -145,29 +167,38 @@ async function summarise(stories, label) {
     signal: AbortSignal.timeout(AI_TIMEOUT_MS),
     body: JSON.stringify({
       model: process.env.NEWS_MODEL || 'claude-haiku-5-5',
-      max_tokens: 1200,
+      max_tokens: 2000,
+      thinking: { type: 'disabled' },
       system:
         'You write news summaries for a tiny smart-glasses display, in British English. ' +
         'Use only the information provided; never add facts, figures or names that are not in it. ' +
         'Be neutral and plain. No markdown.',
+      tools: [TOOL],
+      tool_choice: { type: 'tool', name: TOOL.name },
       messages: [{
         role: 'user',
-        content:
-          `Section: ${label}\nStories (JSON):\n${JSON.stringify(input)}\n\n` +
-          'Return ONLY a JSON object with two keys:\n' +
-          '"summaries": an array with one string per story, in the same order — 1 or 2 sentences, ' +
-          'at most 35 words, adding what the headline does not already say.\n' +
-          '"briefing": a spoken briefing of the 4 or 5 most important stories, at most 90 words, ' +
-          'written to be read aloud by text-to-speech (no lists, symbols or abbreviations that read badly).',
+        content: `Section: ${label}\nStories (JSON):\n${JSON.stringify(input)}\n\nSummarise these stories using the ${TOOL.name} tool.`,
       }],
     }),
   });
-  if (!res.ok) throw new Error(`Claude API returned ${res.status}`);
-  const data = await res.json();
-  const text = (data.content || []).map((c) => c.text || '').join('');
-  const json = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-  if (!Array.isArray(json.summaries) || typeof json.briefing !== 'string') throw new Error('Unexpected AI reply');
-  return json;
+
+  const raw = await res.text();
+  if (!res.ok) throw new Error(`Claude API returned ${res.status}: ${raw.slice(0, 300)}`);
+  const data = JSON.parse(raw);
+
+  let out = (data.content || []).find((c) => c.type === 'tool_use')?.input;
+  if (!out) { // fallback: JSON written as plain text
+    const text = (data.content || []).map((c) => c.text || '').join('');
+    const start = text.indexOf('{');
+    if (start >= 0) {
+      try { out = JSON.parse(text.slice(start, text.lastIndexOf('}') + 1)); } catch { /* handled below */ }
+    }
+  }
+  if (!out || !Array.isArray(out.summaries) || typeof out.briefing !== 'string') {
+    const kinds = (data.content || []).map((c) => c.type).join(',') || 'none';
+    throw new Error(`Unexpected AI reply (stop_reason=${data.stop_reason}, content=${kinds}): ${raw.slice(0, 300)}`);
+  }
+  return out;
 }
 
 function plainBriefing(stories, label) {
@@ -203,7 +234,11 @@ async function handler(req, res) {
     console.error('Summary failed, using feed text:', err.message);
   }
 
-  res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=3600');
+  // If summaries were wanted but failed, cache briefly so a fix shows up quickly.
+  const wantedAi = !!process.env.ANTHROPIC_API_KEY;
+  res.setHeader('Cache-Control', wantedAi && !ai
+    ? 'public, s-maxage=120'
+    : 'public, s-maxage=900, stale-while-revalidate=3600');
   return res.status(200).json({
     section: key,
     label: section.label,
