@@ -10,13 +10,24 @@
 (() => {
   'use strict';
 
-  const SECTIONS = [
+  // Tabs shown before the first load. After that, the list comes from the
+  // server (SECTIONS in api/news.js), so new topics only need adding there.
+  const DEFAULT_SECTIONS = [
     { key: 'top', label: 'Top' },
     { key: 'uk', label: 'UK' },
     { key: 'local', label: 'Surrey' },
     { key: 'world', label: 'World' },
     { key: 'tech', label: 'Tech' },
+    { key: 'gaming', label: 'Gaming' },
   ];
+  const SECTIONS_STORE = 'newsdeck-sections-v1';
+  let SECTIONS = (() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SECTIONS_STORE));
+      if (Array.isArray(saved) && saved.length) return saved;
+    } catch { /* storage unavailable */ }
+    return DEFAULT_SECTIONS;
+  })();
 
   const CONFIG = {
     endpoint: '/api/news',
@@ -70,14 +81,17 @@
     if (DEMO) { await new Promise((r) => setTimeout(r, 250)); return demoData(key); }
     const res = await fetch(`${CONFIG.endpoint}?section=${encodeURIComponent(key)}`);
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `News request failed (${res.status})`);
+    if (!res.ok) {
+      if (res.status === 404) syncSections(data.sections); // section was removed on the server
+      throw new Error(data.error || `News request failed (${res.status})`);
+    }
     return data;
   }
 
   async function loadSection(key, { force = false } = {}) {
     const cached = state.cache[key];
     const fresh = cached && Date.now() - cached.at < CONFIG.staleMs;
-    if (cached) renderList(key);
+    if (cached) { syncSections(cached.data.sections); renderList(key); }
     if (fresh && !force) { setStatus(DEMO ? 'demo' : 'live', cached); return; }
 
     const token = Symbol(key);
@@ -85,6 +99,7 @@
     setStatus('loading');
     try {
       const data = await fetchSection(key);
+      syncSections(data.sections);
       state.cache[key] = { data, at: Date.now() };
       saveCache();
       if (data.failed?.length) toast(`Couldn’t reach ${data.failed.join(', ')}`, true);
@@ -118,7 +133,22 @@
     return `${Math.round(hrs / 24)}d ago`;
   }
 
+  function syncSections(list) {
+    if (!Array.isArray(list) || !list.length) return;
+    const clean = list.filter((s) => s && s.key).map((s) => ({ key: String(s.key), label: String(s.label || s.key) }));
+    if (JSON.stringify(clean) === JSON.stringify(SECTIONS)) return;
+    SECTIONS = clean;
+    try { localStorage.setItem(SECTIONS_STORE, JSON.stringify(clean)); } catch { /* ignore */ }
+    for (const k of Object.keys(state.cache)) if (!clean.some((s) => s.key === k)) delete state.cache[k];
+    saveCache();
+    renderTabs();
+    if (!clean.some((s) => s.key === state.section)) {
+      selectSection(clean[0].key).then(() => { if (state.view === 'list') focusFirstCard(); });
+    }
+  }
+
   function renderTabs() {
+    const focusedKey = dom.tabs.contains(document.activeElement) ? document.activeElement.dataset.section : null;
     const tabs = SECTIONS.map((s) => {
       const b = document.createElement('button');
       b.type = 'button';
@@ -134,6 +164,10 @@
     });
     dom.tabs.replaceChildren(...tabs);
     markActiveTab();
+    if (focusedKey) {
+      const again = dom.tabs.querySelector(`[data-section="${CSS.escape(focusedKey)}"]`);
+      if (again) focusEl(again);
+    }
   }
 
   function markActiveTab() {
@@ -224,7 +258,7 @@
     const data = sectionData();
     if (state.view === 'list') {
       dom.title.textContent = 'News';
-      dom.sub.textContent = data?.label || SECTIONS.find((s) => s.key === state.section).label;
+      dom.sub.textContent = data?.label || SECTIONS.find((s) => s.key === state.section)?.label || '';
     } else {
       dom.title.textContent = data?.label || 'Story';
       dom.sub.textContent = data ? `${state.storyIndex + 1} of ${data.items.length}` : '';
@@ -371,7 +405,7 @@
   function focusEl(el) {
     if (!el) return;
     el.focus({ preventScroll: true });
-    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   }
 
   function move(dir) {
@@ -492,7 +526,7 @@
   function demoData(key) {
     const now = Date.now();
     const ago = (m) => new Date(now - m * 60000).toISOString();
-    const label = { top: 'Top stories', uk: 'UK', local: 'Surrey', world: 'World', tech: 'Tech' }[key];
+    const label = { top: 'Top stories' }[key] || SECTIONS.find((s) => s.key === key)?.label || key;
     const base = [
       ['BBC', 'Sample headline: rail operator announces new timetable for spring', 'Demo text. A real summary would explain what is changing, who is affected and when it starts.'],
       ['Guardian', 'Sample headline: council sets out plans for new cycle routes', 'Demo text. Summaries are written from each outlet’s own standfirst, kept to one or two sentences.'],
