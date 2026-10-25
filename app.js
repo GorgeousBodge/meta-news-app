@@ -44,8 +44,22 @@
     },
   };
 
-  const DEMO = new URLSearchParams(location.search).has('demo') || location.protocol === 'file:';
+  const params = new URLSearchParams(location.search);
+  const DEMO = params.has('demo') || location.protocol === 'file:';
   const STORE = 'newsdeck-cache-v1';
+
+  // Optional app key (only needed if APP_KEY is set in Vercel): taken from
+  // ?key= once, then remembered on this device and hidden from the address bar.
+  const APP_KEY = (() => {
+    const fromUrl = params.get('key');
+    let key = fromUrl || '';
+    try {
+      if (fromUrl) localStorage.setItem('newsdeck-app-key', fromUrl);
+      else key = localStorage.getItem('newsdeck-app-key') || '';
+    } catch { /* storage unavailable */ }
+    if (fromUrl) history.replaceState(null, '', location.pathname);
+    return key;
+  })();
 
   const $ = (s) => document.querySelector(s);
   const dom = {
@@ -79,8 +93,11 @@
 
   async function fetchSection(key) {
     if (DEMO) { await new Promise((r) => setTimeout(r, 250)); return demoData(key); }
-    const res = await fetch(`${CONFIG.endpoint}?section=${encodeURIComponent(key)}`);
+    const res = await fetch(`${CONFIG.endpoint}?section=${encodeURIComponent(key)}`, {
+      headers: APP_KEY ? { 'X-App-Key': APP_KEY } : {},
+    });
     const data = await res.json().catch(() => ({}));
+    if (res.status === 401) throw new Error(APP_KEY ? 'App key is wrong' : 'Open with ?key=… to connect');
     if (!res.ok) {
       if (res.status === 404) syncSections(data.sections); // section was removed on the server
       throw new Error(data.error || `News request failed (${res.status})`);
