@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/33939434/README.md)
 # News Deck
 
 Glanceable news for **Meta Ray-Ban Display** glasses. Headlines from RSS feeds (BBC, Guardian, Surrey Live, gaming and tech sites…), short **AI summaries**, and a **spoken briefing** through the glasses speaker. Built for the Display's 600×600 screen and the Neural Band.
@@ -46,6 +47,11 @@ Choose **Add New → Project** and import the repo.
 | `NEWS_MODEL` | *Optional.* The Claude model to use. Defaults to `claude-haiku-5-5`, the smallest and cheapest |
 
 4. **Redeploy** (Deployments → ⋯ → Redeploy). Vercel only picks up variable changes on a new deployment.
+
+### Optional: require an app key
+If your Vercel address is public, you can stop other people using your AI credits by adding an `APP_KEY` variable: a random string of **letters and numbers only**. Redeploy, then open the app once with `https://YOUR-PROJECT.vercel.app/?key=YOUR_APP_KEY` (use that full link when adding it to your glasses). Without `APP_KEY`, the app needs no key.
+
+Either way, requests with extra parameters are refused, so nobody can bypass the cache to trigger repeated AI calls.
 
 ### 4. Check it
 Open `https://YOUR-PROJECT.vercel.app/api/news?section=top`. You'll see raw data. Look for:
@@ -145,6 +151,8 @@ Commit the change. Vercel redeploys, and the new tab appears next time the app l
 | A name in `"failed"` | That feed is down or its address has changed. Open the address in a browser to check |
 | "Couldn't load the news feeds" | Every feed in that section failed. Check the addresses |
 | New section doesn't appear | Make sure the change is committed and deployed, then reopen the app. The tab list refreshes when news loads |
+| "Open with ?key=… to connect" / "App key is wrong" | `APP_KEY` is set in Vercel. Open the app once with the full `?key=` link, using letters and numbers only |
+| Checking `/api/news` in a browser says "App key missing" | Expected when `APP_KEY` is set: the browser doesn't send the key. Use Vercel's **Logs** instead, or remove `APP_KEY` temporarily |
 | Briefing is silent | Check the glasses' volume. Speech uses the Display's built-in text-to-speech |
 
 ## Disclaimer
