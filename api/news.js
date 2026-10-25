@@ -232,8 +232,31 @@ function plainBriefing(stories, label) {
   return heads.length ? `${label}. ${heads.join(' ')}` : '';
 }
 
+/* ---------- access checks ---------- */
+const crypto = require('crypto');
+
+function keyMatches(given, expected) {
+  const a = Buffer.from(String(given || ''));
+  const b = Buffer.from(String(expected || ''));
+  return a.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 /* ---------- handler ---------- */
 async function handler(req, res) {
+  // Only plain "?section=…" requests. Extra parameters would dodge the cache and
+  // trigger fresh AI calls, so they're refused before any work is done.
+  const params = Object.keys(req.query || {});
+  if (req.method !== 'GET' || params.some((p) => p !== 'section')) {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(400).json({ error: 'Bad request' });
+  }
+
+  // Optional app key: only enforced when APP_KEY is set in Vercel.
+  if (process.env.APP_KEY && !keyMatches(req.headers['x-app-key'], process.env.APP_KEY)) {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(401).json({ error: 'App key missing or wrong' });
+  }
+
   const key = String(req.query.section || 'top');
   const section = SECTIONS[key];
   if (!section) {
