@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Single-colour mask: the glasses tint it. Newspaper page: photo block and text lines. -->
+  <rect x="12" y="15" width="17" height="15" rx="1.5" fill="#fff"/>
+  <path d="M35 17h17M35 27h17M12 37h40M12 45h40" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+</svg>
