@@ -1,0 +1,8 @@
+{
+  "headers": [
+    {
+      "source": "/.well-known/meta-wearables-manifest.json",
+      "headers": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }]
+    }
+  ]
+}
