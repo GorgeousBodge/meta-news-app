@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "News Deck",
+  "description": "Glanceable news with short summaries and a spoken briefing.",
+  "appearance": {
+    "theme_color": "#3FE0FF",
+    "icon": { "src": "news-icon.svg", "type": "monochrome" },
+    "icon_background": {
+      "colors": ["#0E4552", "#082C35", "#041A20", "#020D10"],
+      "stops": [0.0, 0.33, 0.66, 1.0],
+      "inner_glow_color": "#3FE0FF"
+    }
+  }
+}
